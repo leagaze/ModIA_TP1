@@ -3,6 +3,7 @@ from statistics import mean # to compute the mean of a list
 from tqdm import tqdm #used to generate progress bar during training
 
 import torch
+import torch.nn as nn
 import torch.optim as optim 
 from torch.utils.tensorboard import SummaryWriter
 from  torchvision.utils import make_grid #to generate image grids, will be used in tensorboard 
@@ -14,19 +15,19 @@ from unet import UNet
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def train(net, optimizer, loader, epochs=5, writer=None):
-    criterion = ...
+    criterion = nn.MSELoss()
     for epoch in range(epochs):
         running_loss = []
         t = tqdm(loader)
         for x, y in t: # x: black and white image, y: colored image 
-            ...
-            ...
-            ...
-            ...
-            ...
-            ...
-            ...
-            ...
+            x, y = x.to(device), y.to(device)
+            outputs = net(x)
+            loss = criterion(outputs, y)
+            running_loss.append(loss.item())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            t.set_description(f'training loss: {mean(running_loss)}')
         if writer is not None:
             #Logging loss in tensorboard
             writer.add_scalar('training loss', mean(running_loss), epoch)
@@ -46,18 +47,18 @@ def train(net, optimizer, loader, epochs=5, writer=None):
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', type=str, default = 'Colorize', help='experiment name')
-    parser.add_argument('--data_path', ...)
-    parser.add_argument('--batch_size'...)
-    parser.add_argument('--epochs'...)
-    parser.add_argument('--lr'...)
+    parser.add_argument('--data_path', type=str, default='./data', help="path to data ")
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
+    parser.add_argument('--epochs', type=int, default=10, help='number of epochs')
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 
-    exp_name = ...
-    args = ...
-    data_path = ...
-    batch_size = ...
-    epochs = ...
-    lr = ...
-    unet = UNet().cuda()
+    args = parser.parse_args()
+    exp_name = args.exp_name
+    data_path = args.data_path
+    batch_size = args.batch_size
+    epochs = args.epochs
+    lr = args.lr
+    unet = UNet().to(device)
     loader = get_colorized_dataset_loader(path=data_path, 
                                         batch_size=batch_size, 
                                         shuffle=True, 
@@ -67,7 +68,7 @@ if __name__=='__main__':
     optimizer = optim.Adam(unet.parameters(), lr=lr)
     writer = SummaryWriter(f'runs/{exp_name}')
     train(unet, optimizer, loader, epochs=epochs, writer=writer)
-    writer.add_graph(unet)
+    writer.add_graph(unet, x.to(device))
 
     # Save model weights
     torch.save(unet.state_dict(), 'unet.pth')
