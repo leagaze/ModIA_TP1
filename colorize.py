@@ -83,7 +83,7 @@ if __name__=='__main__':
         embeddings = torch.cat(all_embeddings)
         labels = torch.cat(all_labels)
         writer.add_embedding(embeddings, label_img=labels, global_step=1)
-        writer.add_graph(unet, x.to(device))
+       # writer.add_graph(unet, x.to(device))
 
     # Save model weights
     torch.save(unet.state_dict(), 'unet.pth')
